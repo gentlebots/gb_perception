@@ -33,9 +33,12 @@ int main(int argc, char ** argv)
     rclcpp::spin_some(perceptor_3d_node);
 
     auto point3d = perceptor_3d->get_3d_from_pixel(
-      160, 120, perceptor_3d_node->now() - rclcpp::Duration(1s), "base_footprint");
-    std::cerr << "Pose in base_footprint is (" << point3d.x() << ", " <<
-      point3d.y() << ", " << point3d.z() << ")" << std::endl;
+      160, 120, perceptor_3d_node->now(), "base_footprint");
+
+    if (point3d.has_value()) {
+      std::cerr << "Pose centro in base_footprint is (" << point3d.value().x() << ", " <<
+        point3d.value().y() << ", " << point3d.value().z() << ")" << std::endl;
+    }
 
     rate.sleep();
   }

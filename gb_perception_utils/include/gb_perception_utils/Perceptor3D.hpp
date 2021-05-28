@@ -37,8 +37,8 @@ class Perceptor3D
 public:
   explicit Perceptor3D(rclcpp::Node::SharedPtr node);
 
-  tf2::Vector3 get_3d_from_pixel(
-    int u, int v, rclcpp::Time ts,
+  std::optional<tf2::Vector3> get_3d_from_pixel(
+    double u, double v, rclcpp::Time ts,
     const std::string & target_frame_id);
 
 private:

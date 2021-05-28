@@ -69,15 +69,17 @@ Perceptor3D::info_callback(sensor_msgs::msg::CameraInfo::SharedPtr msg)
     info_sub_ = nullptr;
 
     model_ = std::make_shared<image_geometry::PinholeCameraModel>();
-    model_->fromCameraInfo(msg);
   }
+  model_->fromCameraInfo(msg);
 }
 
-tf2::Vector3
-Perceptor3D::get_3d_from_pixel(int u, int v, rclcpp::Time ts, const std::string & target_frame_id)
+std::optional<tf2::Vector3>
+Perceptor3D::get_3d_from_pixel(
+  double u, double v, rclcpp::Time ts,
+  const std::string & target_frame_id)
 {
   if (model_ == nullptr || image_buffer_.empty()) {
-    return tf2::Vector3();
+    return {};
   }
   double last_diff = std::numeric_limits<double>::max();
 
@@ -100,11 +102,19 @@ Perceptor3D::get_3d_from_pixel(int u, int v, rclcpp::Time ts, const std::string 
 
   if (image.encoding != "32FC1") {
     RCLCPP_ERROR(node_->get_logger(), "The image type has not depth info");
+    return {};
   } else {
     cv_bridge::CvImagePtr cv_depth_ptr = cv_bridge::toCvCopy(image, image.encoding);
     float depth = cv_depth_ptr->image.at<float>(cv::Point2d(u, v));
 
-    cv::Point3d ray = model_->projectPixelTo3dRay(cv::Point2d(u, v));
+    if (std::isnan(depth)) {
+      return {};
+    }
+
+    cv::Point3d ray = model_->projectPixelTo3dRay(
+      model_->rectifyPoint(cv::Point2d(u, v)));
+
+    ray = ray / ray.z;
 
     cv::Point3d point = ray * depth;
 
@@ -117,14 +127,10 @@ Perceptor3D::get_3d_from_pixel(int u, int v, rclcpp::Time ts, const std::string 
     tf2::fromMsg(image2target_msg, image2target);
 
     tf2::Vector3 point_tf(point.x, point.y, point.z);
-
     tf2::Vector3 p_bf = image2target * point_tf;
 
     return p_bf;
   }
-
-
-  return tf2::Vector3();
 }
 
 }  // namespace gb_perception_utils
